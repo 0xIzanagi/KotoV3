@@ -16,8 +16,9 @@ import {PricingLibrary} from "./PricingLibrary.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {FullMath} from "./libraries/FullMath.sol";
 import {IERC20Minimal} from "./interfaces/IERC20Minimal.sol";
+import {IKotoV3} from "./interfaces/IKotoV3.sol";
 
-contract KotoV3 {
+contract KotoV3 is IKotoV3 {
     // ========================== STORAGE ========================== \\
 
     mapping(address => uint256) private _balances;
@@ -591,36 +592,6 @@ contract KotoV3 {
             _token1 := mload(0x20)
         }
     }
-
-    // ========================= EVENTS ========================= \\
-
-    event AmmAdded(address poolAdded);
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
-    event Bond(address indexed buyer, uint256 amount, uint256 bondPrice);
-    event CreateMarket(uint256 bonds, uint256 start, uint48 end);
-    event IncreaseLiquidity(uint256 kotoAdded, uint256 ethAdded);
-    event Launched(uint256 time);
-    event LimitsRemoved(uint256 time);
-    event OpenBondMarket(uint256 openingTime);
-    event Redeem(address indexed sender, uint256 burned, uint256 payout, uint256 floorPrice);
-    event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    event UserExcluded(address indexed userToExclude);
-
-    // ========================= ERRORS ========================= \\
-
-    error AlreadyLaunched();
-    error BondFailed();
-    error InsufficentAllowance();
-    error InsufficentBalance();
-    error InsufficentBondsAvailable();
-    error InvalidSender();
-    error InvalidTransfer();
-    error LimitsReached();
-    error MarketClosed();
-    error MaxPayout();
-    error OnlyOwner();
-    error RedeemFailed();
-    error Reentrancy();
 
     receive() external payable {}
 }
