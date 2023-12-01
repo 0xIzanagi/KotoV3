@@ -213,8 +213,8 @@ contract MockKotoV3 {
     ///@return payout The amount of ETH received in exchange for the Koto tokens
     function redeem(uint256 amount) external returns (uint256 payout) {
         // Underlying reserves per token
-        uint256 price = (address(this).balance * 1e18) / _totalSupply;
-        payout = (price * amount) / 1e18;
+        uint256 price = FullMath.mulDiv(address(this).balance, 1e18, _totalSupply);
+        payout = FullMath.mulDiv(price, amount, 1e18);
         _burn(msg.sender, amount);
         SafeTransferLib.safeTransferETH(msg.sender, payout);
         emit Redeem(msg.sender, amount, payout, price);
