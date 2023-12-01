@@ -180,5 +180,54 @@ contract KotoV3Test is Test {
 
     // Admin Functionality Tests
 
-    //function testAddAmm() public {}
+    function testAddAmm(address sender, address amm) public {
+        vm.startPrank(sender);
+        if (sender != koto.ownership() && amm != koto.pool()) {
+            vm.expectRevert(MockKotoV3.OnlyOwner.selector);
+            koto.addAmm(amm);
+            assertEq(koto._amms(amm), false);
+        } else {
+            koto.addAmm(amm);
+            assertEq(koto._amms(amm), true);
+        }
+        vm.stopPrank();
+    }
+
+    function testExclude(address sender, address user) public {
+        address owner = koto.ownership();
+        vm.startPrank(sender);
+        if (sender != koto.ownership()) {
+            vm.expectRevert(MockKotoV3.OnlyOwner.selector);
+            koto.exclude(user);
+            if (user != owner && user != address(depository) && user != address(koto)) {
+                assertEq(koto._excluded(user), false);
+            }
+        } else {
+            koto.exclude(user);
+            assertEq(koto._excluded(user), true);
+        }
+        vm.stopPrank();
+    }
+
+    function testLaunch(address sender) public {
+        address owner = koto.ownership();
+        vm.deal(address(koto), 1000 ether);
+        vm.prank(owner);
+        koto.transfer(address(koto), 1_000_000 ether);
+        if (sender != owner) {
+            vm.expectRevert(MockKotoV3.OnlyOwner.selector);
+            koto.launch();
+        } else {
+            assertEq(koto.balanceOf(address(koto)), 1_000_000 ether);
+            koto.launch();
+            assertEq(koto.balanceOf(address(koto)), 0);
+
+            vm.expectRevert(MockKotoV3.AlreadyLaunched.selector);
+            koto.launch();
+        }
+    }
+
+    function testOpen() public {}
+
+    function testCreate() public {}
 }

@@ -22,8 +22,8 @@ contract MockKotoV3 {
 
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
-    mapping(address => bool) private _excluded;
-    mapping(address => bool) private _amms;
+    mapping(address => bool) public _excluded;
+    mapping(address => bool) public _amms;
     uint256 private _totalSupply;
 
     // ====================== ETH BOND STORAGE ===================== \\
