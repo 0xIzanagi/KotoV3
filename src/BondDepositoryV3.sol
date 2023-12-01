@@ -11,9 +11,7 @@ interface IERC20Minimal {
     function balanceOf(address) external view returns (uint256);
 }
 
-
-
-contract BondDepositoryV2 {
+contract BondDepositoryV3 {
     IUniswapV2Factory public constant FACTORY = IUniswapV2Factory(0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f);
     address public constant OWNER = 0x946eF43867225695E29241813A8F41519634B36b;
     address public constant UNISWAP_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;

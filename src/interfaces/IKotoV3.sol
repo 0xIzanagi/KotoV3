@@ -1,12 +1,10 @@
 // SPDX-License-Identifier: MIT
 
-
 pragma solidity 0.8.23;
 
 import {PricingLibrary} from "../PricingLibrary.sol";
 
 interface IKotoV3 {
-  
     // ==================== EXTERNAL FUNCTIONS ===================== \\
 
     function transfer(address _to, uint256 _value) external returns (bool success);
