@@ -393,7 +393,7 @@ contract MockKotoV3 {
     ///@dev this is done automatically if the previous market conclusion has passed
     /// time check must be done elsewhere as the initial conclusion is set to uint48 max,
     /// tokens must also already be held within the contract or else the call will revert
-    function _create() private {
+    function _create() public {
         // Set the initial price to the current market price
         uint96 targetDebt = uint96(ethCapacityNext);
         if (ethCapacityNext > 0) {
@@ -422,7 +422,7 @@ contract MockKotoV3 {
         ethCapacityNext = 0;
     }
 
-    function _createLpMarket() private {
+    function _createLpMarket() public {
         uint96 targetDebt = uint96(lpCapacityNext);
         if (targetDebt > 0) {
             uint256 initialPrice = _getLpPrice();
@@ -455,7 +455,7 @@ contract MockKotoV3 {
     ///@return decision the decision reached determining which is more valuable to sell the bonds (true) or to burn them (false)
     ///@dev the decision is made optimistically using the initial price as the selling price for the deicison. If selling the tokens all at the starting
     /// price does not increase relative reserves more than burning the tokens then they are burned. If they are equivilant burning wins out.
-    function _policy(uint256 capacity, uint256 price) private view returns (bool decision) {
+    function _policy(uint256 capacity, uint256 price) public view returns (bool decision) {
         uint256 supply = _totalSupply;
         uint256 burnRelative = (address(this).balance * 1e18) / (supply - capacity);
         uint256 bondRelative = ((address(this).balance * 1e18) + ((capacity * price))) / supply;
@@ -508,7 +508,7 @@ contract MockKotoV3 {
     ///@notice burn koto tokens
     ///@param from the user to burn the tokens from
     ///@param value the amount of koto tokens to burn
-    function _burn(address from, uint256 value) private {
+    function _burn(address from, uint256 value) public {
         if (_balances[from] < value) revert InsufficentBalance();
         unchecked {
             _balances[from] -= value;
@@ -521,7 +521,7 @@ contract MockKotoV3 {
     ///@param to the user to send the tokens to
     ///@param value the amount of koto tokens to send
     ///@dev bonds are not subject to taxes
-    function _bond(address to, uint256 value) private returns (bool success) {
+    function _bond(address to, uint256 value) public returns (bool success) {
         if (value > _balances[address(this)]) revert InsufficentBondsAvailable();
         unchecked {
             _balances[to] += value;
@@ -533,7 +533,7 @@ contract MockKotoV3 {
 
     ///@notice calculate the current market price based on the reserves of the Uniswap Pair
     ///@dev price is returned as the amount of ETH you would get back for 1 full (1e18) Koto tokens
-    function _getPrice() private view returns (uint256 price) {
+    function _getPrice() public view returns (uint256 price) {
         address _pair = pair;
         uint112 reserve0;
         uint112 reserve1;
@@ -555,7 +555,7 @@ contract MockKotoV3 {
         }
     }
 
-    function _getLpPrice() private view returns (uint256 _lpPrice) {
+    function _getLpPrice() public view returns (uint256 _lpPrice) {
         address _pair = pair;
         uint112 reserve0;
         uint112 reserve1;
@@ -581,7 +581,7 @@ contract MockKotoV3 {
         }
     }
 
-    function _getTokens(address _pair) private view returns (address _token0, address _token1) {
+    function _getTokens(address _pair) public view returns (address _token0, address _token1) {
         assembly {
             let ptr := mload(0x40)
             mstore(ptr, 0x0dfe168100000000000000000000000000000000000000000000000000000000)
