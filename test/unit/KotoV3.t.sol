@@ -17,7 +17,11 @@ contract KotoV3Test is Test {
         koto = new MockKotoV3(address(depository));
     }
 
+    // Constructor Test
+
     function testConstructor() public {}
+
+    // State Changing Function Tests
 
     function testTransfer(uint256 _value, address _to) public {
         vm.assume(_to != koto.ownership());
@@ -104,4 +108,77 @@ contract KotoV3Test is Test {
         }
         vm.stopPrank();
     }
+
+    function testBurn(uint256 amount) public {
+        address owner = koto.ownership();
+        vm.startPrank(owner);
+        if (amount > 8_500_000 ether) {
+            vm.expectRevert(MockKotoV3.InsufficentBalance.selector);
+            koto.burn(amount);
+        } else {
+            koto.burn(amount);
+            assertEq(koto.totalSupply(), 8_500_000 ether - amount);
+            assertEq(koto.balanceOf(owner), 8_500_000 ether - amount);
+        }
+        vm.stopPrank();
+    }
+
+    // External View / Constant Tests (Primarily for coverage report)
+
+    function testName() public {
+        assertEq(koto.name(), "Koto");
+    }
+
+    function testSymbol() public {
+        assertEq(koto.symbol(), "KOTO");
+    }
+
+    function testDecimals() public {
+        assertEq(koto.decimals(), 18);
+    }
+
+    function testTotalSupply() public {
+        assertEq(koto.totalSupply(), 8_500_000 ether);
+    }
+
+    function testBalanceOf(address user) public {
+        if (user != koto.ownership()) {
+            assertEq(koto.balanceOf(user), 0);
+        } else {
+            assertEq(koto.balanceOf(user), 8_500_000 ether);
+        }
+    }
+
+    function testPool() public {
+        assertNotEq(koto.pool(), address(0));
+    }
+
+    function testAllowance(uint256 amount) public {
+        address owner = koto.ownership();
+        assertEq(koto.allowance(koto.ownership(), address(this)), 0);
+        vm.prank(koto.ownership());
+        koto.approve(address(this), amount);
+        if (amount > 8_500_000 ether) {
+            vm.expectRevert(MockKotoV3.InsufficentBalance.selector);
+            koto.transferFrom(owner, address(this), amount);
+            assertEq(koto.allowance(owner, address(this)), amount);
+        } else if (amount > 0) {
+            koto.transferFrom(owner, address(this), amount);
+            assertEq(koto.balanceOf(owner), 8_500_000 ether - amount);
+            assertEq(koto.balanceOf(address(this)), amount);
+            assertEq(koto.allowance(owner, address(this)), 0);
+        }
+    }
+
+    function testOwnership() public {
+        assertEq(koto.ownership(), 0x946eF43867225695E29241813A8F41519634B36b);
+    }
+
+    function testDepository() public {
+        assertEq(koto.depository(), address(depository));
+    }
+
+    // Admin Functionality Tests
+
+    //function testAddAmm() public {}
 }
