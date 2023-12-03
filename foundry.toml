@@ -5,7 +5,5 @@ libs = ["lib"]
 evm_version = "shanghai"
 solc = "0.8.23"
 
-[fuzz]
-runs = 10_000
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

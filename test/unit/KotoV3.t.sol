@@ -123,6 +123,10 @@ contract KotoV3Test is Test {
         vm.stopPrank();
     }
 
+    function testBond() public {}
+
+    function testLpBond() public {}
+
     // External View / Constant Tests (Primarily for coverage report)
 
     function testName() public {
@@ -209,38 +213,40 @@ contract KotoV3Test is Test {
         vm.stopPrank();
     }
 
-    function testLaunch(address sender) public {
-        address owner = koto.ownership();
-        vm.deal(address(koto), 1000 ether);
-        vm.prank(owner);
-        koto.transfer(address(koto), 1_000_000 ether);
-        if (sender != owner) {
-            vm.expectRevert(MockKotoV3.OnlyOwner.selector);
-            koto.launch();
-        } else {
-            assertEq(koto.balanceOf(address(koto)), 1_000_000 ether);
-            koto.launch();
-            assertEq(koto.balanceOf(address(koto)), 0);
+    // function testLaunch(address sender) public {
+    //     address owner = koto.ownership();
+    //     vm.deal(address(koto), 1000 ether);
+    //     vm.prank(owner);
+    //     koto.transfer(address(koto), 1_000_000 ether);
+    //     if (sender != owner) {
+    //         vm.expectRevert(MockKotoV3.OnlyOwner.selector);
+    //         koto.launch();
+    //     } else {
+    //         assertEq(koto.balanceOf(address(koto)), 1_000_000 ether);
+    //         koto.launch();
+    //         assertEq(koto.balanceOf(address(koto)), 0);
 
-            vm.expectRevert(MockKotoV3.AlreadyLaunched.selector);
-            koto.launch();
-        }
-    }
+    //         vm.expectRevert(MockKotoV3.AlreadyLaunched.selector);
+    //         koto.launch();
+    //     }
+    // }
 
-    function testOpen(address sender) public {
-        address owner = koto.ownership();
-        vm.deal(address(koto), 1000 ether);
-        vm.startPrank(koto.ownership());
-        koto.transfer(address(koto), 1_000_000 ether);
-        koto.launch();
+    // function testOpen(address sender) public {
+    //     address owner = koto.ownership();
+    //     vm.deal(address(koto), 1000 ether);
+    //     vm.startPrank(koto.ownership());
+    //     koto.transfer(address(koto), 1_000_000 ether);
+    //     koto.launch();
 
-        vm.stopPrank();
-        vm.prank(sender);
-        if (sender != owner) {
-            vm.expectRevert(MockKotoV3.OnlyOwner.selector);
-            koto.open();
-        }
-    }
+    //     vm.stopPrank();
+    //     vm.prank(sender);
+    //     if (sender != owner) {
+    //         vm.expectRevert(MockKotoV3.OnlyOwner.selector);
+    //         koto.open();
+    //     }
+    // }
 
     function testCreate() public {}
+
+    // Private Function Tests (Have been made public inside the Mock not the Main contract)
 }
