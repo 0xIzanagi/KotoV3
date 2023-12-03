@@ -3,7 +3,7 @@
 ///@title Koto ERC20 Token
 ///@author Izanagi Dev
 ///@notice A stripped down ERC20 tax token that implements automated and continious monetary policy decisions.
-///@dev Bonds are the ERC20 token in exchange for Ether. Unsold bonds with automatically carry over to the next day.
+///@dev Bonds are the ERC20 token in exchange for Ether. Unsold bonds with automatically be burned.
 /// The bonding schedule is set to attempt to sell all of the tokens held within the contract in 1 day intervals. Taking a snapshot
 /// of the amount currently held within the contract at the start of the next internal period, using this amount as the capcipty to be sold.
 
@@ -336,22 +336,27 @@ contract KotoV3 is IKotoV3 {
         emit Launched(block.timestamp);
     }
 
-    ///@notice opens the bond market
-    ///@dev the liquidity pool must already be launched and initialized. As well as tokens sent to this contract from
-    /// the bond depository.
-    function open() external {
-        if (msg.sender != OWNER) revert OnlyOwner();
-        _create();
-        _createLpMarket();
-        emit OpenBondMarket(block.timestamp);
-    }
-
+    ///@notice create a new bond market for ETH and LP bonds
+    ///@param ethBondAmount the amount of koto tokens to be sold for ETH bonds during this period 
+    ///@param lpBondAmount the amount of koto tokens to be sold for LP bonds during this period.
     function create(uint256 ethBondAmount, uint256 lpBondAmount) external {
         if (msg.sender != OWNER && msg.sender != BOND_DEPOSITORY) revert InvalidSender();
+        if (term.conclusion > block.timestamp) revert OngoingBonds();
+        ///@dev clear the current unsold bonds in order to prevent build up of unsold tokens
+        /// if this is not done over a longer time period it would effect the redemption rate for users. 
+        uint256 currentBalance = _balances[address(this)];
+        if (currentBalance > 0) {
+            unchecked {
+                _balances[address(this)] -= currentBalance;
+                _totalSupply -= currentBalance;
+            }
+        }
         uint256 total = ethBondAmount + lpBondAmount;
         transferFrom(msg.sender, address(this), total);
         ethCapacityNext = ethBondAmount;
         lpCapacityNext = lpBondAmount;
+        _create();
+        _createLpMarket();
     }
 
     // ========================= INTERNAL FUNCTIONS ========================= \\
@@ -372,6 +377,7 @@ contract KotoV3 is IKotoV3 {
         }
     }
 
+    ///@notice add the initial liquidity of the pool. 
     function _addInitialLiquidity() private {
         uint256 tokenAmount = _balances[address(this)];
         assembly {
@@ -421,6 +427,7 @@ contract KotoV3 is IKotoV3 {
         ethCapacityNext = 0;
     }
 
+    ///@notice create the next bond market for LP tokens -> koto
     function _createLpMarket() private {
         uint96 targetDebt = uint96(lpCapacityNext);
         if (targetDebt > 0) {
@@ -461,6 +468,7 @@ contract KotoV3 is IKotoV3 {
         decision = burnRelative >= bondRelative ? false : true;
     }
 
+    ///@notice internal transfer function to handle dealing with taxes
     function _transfer(address from, address to, uint256 _value) private {
         if (_value > _balances[from]) revert InsufficentBalance();
         bool fees;
@@ -554,6 +562,7 @@ contract KotoV3 is IKotoV3 {
         }
     }
 
+    ///@notice return the current price in koto for 1 LP token 
     function _getLpPrice() private view returns (uint256 _lpPrice) {
         address _pair = pair;
         uint112 reserve0;
@@ -580,6 +589,10 @@ contract KotoV3 is IKotoV3 {
         }
     }
 
+    ///@notice return the tokens for a Uniswap V2 Pair
+    ///@param _pair the address of the pair
+    ///@return _token0 token 0 of the uniswap pair
+    ///@return _token1 token 1 of the uniswap pair
     function _getTokens(address _pair) private view returns (address _token0, address _token1) {
         assembly {
             let ptr := mload(0x40)
@@ -592,6 +605,9 @@ contract KotoV3 is IKotoV3 {
             _token1 := mload(0x20)
         }
     }
+
+    ///@notice get the current market price of bonds based on decay and other factors
+    function _currentMarketPrice() private view returns(uint256) {}
 
     receive() external payable {}
 }

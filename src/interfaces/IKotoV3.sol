@@ -106,6 +106,7 @@ interface IKotoV3 {
     error LimitsReached();
     error MarketClosed();
     error MaxPayout();
+    error OngoingBonds();
     error OnlyOwner();
     error RedeemFailed();
     error Reentrancy();

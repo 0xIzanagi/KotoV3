@@ -231,21 +231,6 @@ contract KotoV3Test is Test {
     //     }
     // }
 
-    // function testOpen(address sender) public {
-    //     address owner = koto.ownership();
-    //     vm.deal(address(koto), 1000 ether);
-    //     vm.startPrank(koto.ownership());
-    //     koto.transfer(address(koto), 1_000_000 ether);
-    //     koto.launch();
-
-    //     vm.stopPrank();
-    //     vm.prank(sender);
-    //     if (sender != owner) {
-    //         vm.expectRevert(MockKotoV3.OnlyOwner.selector);
-    //         koto.open();
-    //     }
-    // }
-
     function testCreate() public {}
 
     // Private Function Tests (Have been made public inside the Mock not the Main contract)
