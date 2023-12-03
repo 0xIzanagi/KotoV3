@@ -276,11 +276,11 @@ contract MockKotoV3 {
 
     ///@notice the current price a bond
     function bondPrice() external view returns (uint256) {
-        return PricingLibrary.marketPrice(term.controlVariable, market.totalDebt, _totalSupply);
+        return _currentMarketPrice(true);
     }
 
     function bondPriceLp() external view returns (uint256) {
-        return PricingLibrary.marketPrice(lpTerm.controlVariable, lpMarket.totalDebt, _totalSupply);
+        return _currentMarketPrice(false);
     }
 
     ///@notice return the current redemption price for 1 uint of Koto.
@@ -336,22 +336,26 @@ contract MockKotoV3 {
         emit Launched(block.timestamp);
     }
 
-    ///@notice opens the bond market
-    ///@dev the liquidity pool must already be launched and initialized. As well as tokens sent to this contract from
-    /// the bond depository.
-    function open() external {
-        if (msg.sender != OWNER) revert OnlyOwner();
-        _create();
-        _createLpMarket();
-        emit OpenBondMarket(block.timestamp);
-    }
-
     function create(uint256 ethBondAmount, uint256 lpBondAmount) external {
         if (msg.sender != OWNER && msg.sender != BOND_DEPOSITORY) revert InvalidSender();
+        if (term.conclusion != type(uint48).max) {
+            if (term.conclusion > block.timestamp) revert OngoingBonds();
+        }
+        ///@dev clear the current unsold bonds in order to prevent build up of unsold tokens
+        /// if this is not done over a longer time period it would effect the redemption rate for users.
+        uint256 currentBalance = _balances[address(this)];
+        if (currentBalance > 0) {
+            unchecked {
+                _balances[address(this)] -= currentBalance;
+                _totalSupply -= currentBalance;
+            }
+        }
         uint256 total = ethBondAmount + lpBondAmount;
         transferFrom(msg.sender, address(this), total);
         ethCapacityNext = ethBondAmount;
         lpCapacityNext = lpBondAmount;
+        _create();
+        _createLpMarket();
     }
 
     // ========================= INTERNAL FUNCTIONS ========================= \\
@@ -594,6 +598,35 @@ contract MockKotoV3 {
         }
     }
 
+     ///@notice get the current market price of bonds based on decay and other factors
+    ///@param eth true if you are getting the ETH bond price, false for LP bond price
+    function _currentMarketPrice(bool eth) private view returns (uint256) {
+        if (eth) {
+            return (
+                (
+                    _currentControlVariable(term.controlVariable, adjustment)
+                        * PricingLibrary.debtRatio(market.totalDebt, _totalSupply)
+                ) / 1e18
+            );
+        } else {
+            return (
+                (
+                    _currentControlVariable(lpTerm.controlVariable, lpAdjustment)
+                        * PricingLibrary.debtRatio(lpMarket.totalDebt, _totalSupply)
+                ) / 1e18
+            );
+        }
+    }
+
+    function _currentControlVariable(uint256 controlVariable, PricingLibrary.Adjustment memory info)
+        private
+        view
+        returns (uint256)
+    {
+        (uint256 decay,,) = PricingLibrary.controlDecay(info);
+        return controlVariable - decay;
+    }
+
     // ========================= EVENTS ========================= \\
 
     event AmmAdded(address poolAdded);
@@ -621,6 +654,7 @@ contract MockKotoV3 {
     error MarketClosed();
     error MaxPayout();
     error OnlyOwner();
+    error OngoingBonds();
     error RedeemFailed();
     error Reentrancy();
 

@@ -276,11 +276,11 @@ contract KotoV3 is IKotoV3 {
 
     ///@notice the current price a bond
     function bondPrice() external view returns (uint256) {
-        return PricingLibrary.marketPrice(term.controlVariable, market.totalDebt, _totalSupply);
+        return _currentMarketPrice(true);
     }
 
     function bondPriceLp() external view returns (uint256) {
-        return PricingLibrary.marketPrice(lpTerm.controlVariable, lpMarket.totalDebt, _totalSupply);
+        return _currentMarketPrice(false);
     }
 
     ///@notice return the current redemption price for 1 uint of Koto.
@@ -337,13 +337,13 @@ contract KotoV3 is IKotoV3 {
     }
 
     ///@notice create a new bond market for ETH and LP bonds
-    ///@param ethBondAmount the amount of koto tokens to be sold for ETH bonds during this period 
+    ///@param ethBondAmount the amount of koto tokens to be sold for ETH bonds during this period
     ///@param lpBondAmount the amount of koto tokens to be sold for LP bonds during this period.
     function create(uint256 ethBondAmount, uint256 lpBondAmount) external {
         if (msg.sender != OWNER && msg.sender != BOND_DEPOSITORY) revert InvalidSender();
         if (term.conclusion > block.timestamp) revert OngoingBonds();
         ///@dev clear the current unsold bonds in order to prevent build up of unsold tokens
-        /// if this is not done over a longer time period it would effect the redemption rate for users. 
+        /// if this is not done over a longer time period it would effect the redemption rate for users.
         uint256 currentBalance = _balances[address(this)];
         if (currentBalance > 0) {
             unchecked {
@@ -377,7 +377,7 @@ contract KotoV3 is IKotoV3 {
         }
     }
 
-    ///@notice add the initial liquidity of the pool. 
+    ///@notice add the initial liquidity of the pool.
     function _addInitialLiquidity() private {
         uint256 tokenAmount = _balances[address(this)];
         assembly {
@@ -562,7 +562,7 @@ contract KotoV3 is IKotoV3 {
         }
     }
 
-    ///@notice return the current price in koto for 1 LP token 
+    ///@notice return the current price in koto for 1 LP token
     function _getLpPrice() private view returns (uint256 _lpPrice) {
         address _pair = pair;
         uint112 reserve0;
@@ -607,7 +607,33 @@ contract KotoV3 is IKotoV3 {
     }
 
     ///@notice get the current market price of bonds based on decay and other factors
-    function _currentMarketPrice() private view returns(uint256) {}
+    ///@param eth true if you are getting the ETH bond price, false for LP bond price
+    function _currentMarketPrice(bool eth) private view returns (uint256) {
+        if (eth) {
+            return (
+                (
+                    _currentControlVariable(term.controlVariable, adjustment)
+                        * PricingLibrary.debtRatio(market.totalDebt, _totalSupply)
+                ) / 1e18
+            );
+        } else {
+            return (
+                (
+                    _currentControlVariable(lpTerm.controlVariable, lpAdjustment)
+                        * PricingLibrary.debtRatio(lpMarket.totalDebt, _totalSupply)
+                ) / 1e18
+            );
+        }
+    }
+
+    function _currentControlVariable(uint256 controlVariable, PricingLibrary.Adjustment memory info)
+        private
+        view
+        returns (uint256)
+    {
+        (uint256 decay,,) = PricingLibrary.controlDecay(info);
+        return controlVariable - decay;
+    }
 
     receive() external payable {}
 }
