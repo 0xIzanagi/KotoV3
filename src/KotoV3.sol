@@ -117,10 +117,7 @@ contract KotoV3 is IKotoV3 {
     ///@notice exchange ETH for Koto tokens at the current bonding price
     ///@dev bonds are set on 1 day intervals with 4 hour deposit intervals and 30 minute tune intervals.
     function bond() public payable lock returns (uint256 payout) {
-        // If the previous market has ended create a new market.
-        if (block.timestamp > term.conclusion) {
-            _create();
-        }
+        if (block.timestamp > lpTerm.conclusion) revert MarketClosed();
         if (market.capacity != 0) {
             // Cache variables for later use to minimize storage calls
             PricingLibrary.Market memory _market = market;
@@ -164,10 +161,7 @@ contract KotoV3 is IKotoV3 {
     }
 
     function bondLp(uint256 _lpAmount) public lock returns (uint256 payout) {
-        // If the previous market has ended create a new market.
-        if (block.timestamp > term.conclusion) {
-            _createLpMarket();
-        }
+        if (block.timestamp > lpTerm.conclusion) revert MarketClosed();
         if (lpMarket.capacity != 0) {
             IERC20Minimal(pair).transferFrom(msg.sender, address(BOND_DEPOSITORY), _lpAmount);
             // Cache variables for later use to minimize storage calls

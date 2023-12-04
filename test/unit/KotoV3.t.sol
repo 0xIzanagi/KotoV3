@@ -157,6 +157,9 @@ contract KotoV3Test is Test {
         vm.warp(block.timestamp + 80_000);
         ///@dev now that adjustments have been activiated we do not need to send an additional bond
         assertGt(post, koto.bondPrice());
+        vm.warp(block.timestamp + 100_000);
+        vm.expectRevert(MockKotoV3.MarketClosed.selector);
+        koto.bond{value: 100 ether}();
     }
 
     function testLpBond() public {
@@ -177,6 +180,12 @@ contract KotoV3Test is Test {
         assertGt(pre, post);
         vm.warp(block.timestamp + 30_000);
         assertGt(post, koto.bondPriceLp());
+        vm.warp(block.timestamp + 100_000);
+        vm.expectRevert(MockKotoV3.MarketClosed.selector);
+        koto.bondLp(100 ether);
+        vm.warp(block.timestamp + 150_000);
+        koto.create(0, 10_000 ether);
+        assertEq(koto.balanceOf(address(koto)), 10_000 ether);
     }
 
     // External View / Constant Tests (Primarily for coverage report)
