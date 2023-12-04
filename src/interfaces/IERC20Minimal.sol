@@ -6,4 +6,5 @@ interface IERC20Minimal {
     function transferFrom(address from, address to, uint256 value) external returns (bool);
     function transfer(address, uint256) external returns (bool);
     function balanceOf(address) external view returns (uint256);
+    function totalSupply() external view returns (uint256);
 }

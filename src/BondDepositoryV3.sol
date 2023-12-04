@@ -17,7 +17,8 @@ contract BondDepositoryV3 {
     address public constant UNISWAP_ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address public constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     uint256 public constant TIMELOCK_INTERVAL = 86400 * 3; // 3 day timelock
-    uint256 public execution = type(uint256).max; ///@dev set timelock to max so that it can not be called
+    uint256 public execution = type(uint256).max;
+    ///@dev set timelock to max so that it can not be called
     address public koto;
 
     modifier onlyOwner() {

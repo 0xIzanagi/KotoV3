@@ -82,7 +82,7 @@ contract KotoV3 is IKotoV3 {
         _excluded[BOND_DEPOSITORY] = true;
         _excluded[address(this)] = true;
         _amms[pair] = true;
-        _mint(OWNER, 8_500_000e18); //
+        _mint(OWNER, IERC20Minimal(0xc75c635c1F5e21D23eC8592Cb37503B82A7EF942).totalSupply());
         (token0, token1) = _getTokens(pair);
         zeroForOne = address(this) == token0 ? true : false;
         _allowances[address(this)][UNISWAP_V2_ROUTER] = type(uint256).max;
