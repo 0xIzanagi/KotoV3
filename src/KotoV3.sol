@@ -87,7 +87,6 @@ contract KotoV3 is IKotoV3 {
         zeroForOne = address(this) == token0 ? true : false;
         _allowances[address(this)][UNISWAP_V2_ROUTER] = type(uint256).max;
         ///@dev set term conclusion to type uint48 max to prevent bonds being created before opening them to the public
-        term.conclusion = type(uint48).max;
     }
 
     // ==================== EXTERNAL FUNCTIONS ===================== \\
@@ -335,9 +334,8 @@ contract KotoV3 is IKotoV3 {
     ///@param lpBondAmount the amount of koto tokens to be sold for LP bonds during this period.
     function create(uint256 ethBondAmount, uint256 lpBondAmount) external {
         if (msg.sender != OWNER && msg.sender != BOND_DEPOSITORY) revert InvalidSender();
-        if (term.conclusion != type(uint48).max) {
-            if (term.conclusion > block.timestamp) revert OngoingBonds();
-        }
+        if (term.conclusion > block.timestamp) revert OngoingBonds();
+        
         ///@dev clear the current unsold bonds in order to prevent build up of unsold tokens
         /// if this is not done over a longer time period it would effect the redemption rate for users.
         uint256 currentBalance = _balances[address(this)];
