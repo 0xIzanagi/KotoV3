@@ -164,10 +164,6 @@ contract MockKotoV3 {
     }
 
     function bondLp(uint256 _lpAmount) public lock returns (uint256 payout) {
-        // If the previous market has ended create a new market.
-        if (block.timestamp > term.conclusion) {
-            _createLpMarket();
-        }
         if (lpMarket.capacity != 0) {
             IERC20Minimal(pair).transferFrom(msg.sender, address(BOND_DEPOSITORY), _lpAmount);
             // Cache variables for later use to minimize storage calls
@@ -598,7 +594,7 @@ contract MockKotoV3 {
         }
     }
 
-     ///@notice get the current market price of bonds based on decay and other factors
+    ///@notice get the current market price of bonds based on decay and other factors
     ///@param eth true if you are getting the ETH bond price, false for LP bond price
     function _currentMarketPrice(bool eth) private view returns (uint256) {
         if (eth) {

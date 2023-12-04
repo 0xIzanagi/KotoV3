@@ -6,11 +6,18 @@ import "forge-std/Test.sol";
 import {MockKotoV3} from "../helpers/MockKotoV3.sol";
 import {BondDepositoryV3} from "../../src/BondDepositoryV3.sol";
 import {FullMath} from "../../src/libraries/FullMath.sol";
+import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
+
+interface IERC20 {
+    function approve(address, uint256) external returns (bool);
+    function balanceOf(address) external view returns (uint256);
+}
 
 contract KotoV3Test is Test {
     MockKotoV3 public koto;
     BondDepositoryV3 public depository;
     address public alice = address(0x01);
+    IUniswapV2Router02 public router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
     function setUp() public {
         depository = new BondDepositoryV3();
@@ -139,9 +146,38 @@ contract KotoV3Test is Test {
 
         assertEq(koto.balanceOf(address(alice)), payout);
         assertEq(koto.balanceOf(address(koto)), 100_000 ether - payout);
+
+        uint256 currentBondPrice = koto.bondPrice();
+
+        vm.warp(block.timestamp + 40_000);
+        ///@dev send a 0 value bond to activate the adjustments and tuning
+        koto.bond();
+        uint256 post = koto.bondPrice();
+        assertGt(currentBondPrice, post);
+        vm.warp(block.timestamp + 80_000);
+        ///@dev now that adjustments have been activiated we do not need to send an additional bond
+        assertGt(post, koto.bondPrice());
     }
 
-    function testLpBond() public {}
+    function testLpBond() public {
+        vm.startPrank(koto.ownership());
+        koto.approve(address(router), type(uint256).max);
+        koto.approve(address(koto), type(uint256).max);
+        (,, uint256 lpTokens) =
+            router.addLiquidityETH{value: 1 ether}(address(koto), 1000 ether, 0, 0, koto.ownership(), type(uint256).max);
+        IERC20(koto.pool()).approve(address(koto), type(uint256).max);
+        koto.create(0, 100_000 ether);
+        koto.bondLp(lpTokens);
+        assertEq(IERC20(koto.pool()).balanceOf(address(depository)), lpTokens);
+        assertEq(IERC20(koto.pool()).balanceOf(koto.ownership()), 0);
+        uint256 pre = koto.bondPriceLp();
+        vm.warp(block.timestamp + 20_000);
+        koto.bondLp(0);
+        uint256 post = koto.bondPriceLp();
+        assertGt(pre, post);
+        vm.warp(block.timestamp + 30_000);
+        assertGt(post, koto.bondPriceLp());
+    }
 
     // // External View / Constant Tests (Primarily for coverage report)
 
