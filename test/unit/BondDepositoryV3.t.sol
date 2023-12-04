@@ -11,8 +11,6 @@ interface IERC20 {
     function balanceOf(address) external view returns (uint256);
 }
 
-///Todo: Revert Path testing
-
 contract BondDepositoryV3Test is Test {
     MockKotoV3 public koto;
     BondDepositoryV3 public depository;
@@ -101,6 +99,8 @@ contract BondDepositoryV3Test is Test {
         vm.startPrank(depository.OWNER());
         depository.set(address(koto));
         depository.start();
+        vm.expectRevert(BondDepositoryV3.Timelock.selector);
+        depository.emergencyWithdraw(address(this));
         assertEq(depository.execution(), block.timestamp + 3 days);
         vm.warp(block.timestamp + 270_000);
         depository.emergencyWithdraw(depository.OWNER());
@@ -117,5 +117,29 @@ contract BondDepositoryV3Test is Test {
         assertEq(address(koto), depository.koto());
         assertEq(koto.allowance(address(depository), depository.UNISWAP_ROUTER()), type(uint256).max);
         assertEq(koto.allowance(address(depository), address(koto)), type(uint256).max);
+    }
+
+    function testReverts(address y) public {
+        vm.assume(y != address(0) && y != depository.OWNER());
+        vm.startPrank(y);
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.set(address(koto));
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.burn(100 ether);
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.deposit(100, 100);
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.bond(1 ether);
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.redeem(100);
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.reward(100, address(voter));
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.start();
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.emergencyWithdraw(address(this));
+        vm.expectRevert(BondDepositoryV3.OnlyOwner.selector);
+        depository.swap(100, false, 0);
+        vm.stopPrank();
     }
 }
