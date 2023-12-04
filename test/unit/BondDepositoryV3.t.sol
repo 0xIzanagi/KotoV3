@@ -87,7 +87,7 @@ contract BondDepositoryV3Test is Test {
         depository.set(address(koto));
         koto.transfer(address(depository), 100_000 ether);
         assertEq(koto.balanceOf(address(depository)), 100_000 ether);
-        vm.warp(block.timestamp + 90_000);
+        vm.warp(block.timestamp + 700_000);
         depository.deposit(50_000 ether, 50_000 ether);
         vm.stopPrank();
         assertEq(koto.balanceOf(address(depository)), 0);

@@ -3,7 +3,7 @@
 pragma solidity 0.8.23;
 
 import "forge-std/Test.sol";
-import {MockKotoV3} from "../helpers/MockKotoV3.sol";
+import {MockKotoV3, IMockKotoV3} from "../helpers/MockKotoV3.sol";
 import {BondDepositoryV3} from "../../src/BondDepositoryV3.sol";
 import {FullMath} from "../../src/libraries/FullMath.sol";
 import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
@@ -11,9 +11,11 @@ import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 interface IERC20 {
     function approve(address, uint256) external returns (bool);
     function balanceOf(address) external view returns (uint256);
+    function totalSupply() external view returns(uint256);
 }
 
 contract KotoV3Test is Test {
+    uint256 startingSupply = IERC20(0xc75c635c1F5e21D23eC8592Cb37503B82A7EF942).totalSupply();
     MockKotoV3 public koto;
     BondDepositoryV3 public depository;
     address public alice = address(0x01);
@@ -33,23 +35,23 @@ contract KotoV3Test is Test {
     function testTransfer(uint256 _value, address _to) public {
         vm.assume(_to != koto.ownership());
         vm.startPrank(koto.ownership());
-        if (_value > 8_500_000 ether) {
-            vm.expectRevert(MockKotoV3.InsufficentBalance.selector);
+        if (_value > startingSupply) {
+            vm.expectRevert(IMockKotoV3.InsufficentBalance.selector);
             koto.transfer(alice, _value);
         } else if (_value > 0) {
             koto.transfer(alice, _value);
-            assertEq(koto.balanceOf(koto.ownership()), 8_500_000 ether - _value);
+            assertEq(koto.balanceOf(koto.ownership()), startingSupply - _value);
             assertEq(koto.balanceOf(alice), _value);
         } else {
-            vm.expectRevert(MockKotoV3.InvalidTransfer.selector);
+            vm.expectRevert(IMockKotoV3.InvalidTransfer.selector);
             koto.transfer(alice, _value);
         }
         if (_to == address(0) && _value > 0 && _value < koto.balanceOf(koto.ownership())) {
-            vm.expectRevert(MockKotoV3.InvalidTransfer.selector);
+            vm.expectRevert(IMockKotoV3.InvalidTransfer.selector);
             koto.transfer(_to, _value);
         } else if (_to != address(0) && _value > 0 && _value < koto.balanceOf(koto.ownership())) {
             koto.transfer(_to, _value);
-            assertEq(koto.balanceOf(koto.ownership()), 8_500_000 ether - (_value * 2));
+            assertEq(koto.balanceOf(koto.ownership()), startingSupply - (_value * 2));
             if (_to == alice) {
                 assertEq(koto.balanceOf(_to), _value * 2);
             } else {
@@ -63,24 +65,24 @@ contract KotoV3Test is Test {
         address owner = koto.ownership();
         vm.assume(to != owner);
         if (to == address(0) || amount == 0) {
-            vm.expectRevert(MockKotoV3.InvalidTransfer.selector);
+            vm.expectRevert(IMockKotoV3.InvalidTransfer.selector);
             koto.transferFrom(owner, to, amount);
         } else {
-            vm.expectRevert(MockKotoV3.InsufficentAllowance.selector);
+            vm.expectRevert(IMockKotoV3.InsufficentAllowance.selector);
             koto.transferFrom(owner, to, amount);
         }
         vm.prank(owner);
         koto.approve(address(this), amount);
         if (to == address(0) || amount == 0) {
-            vm.expectRevert(MockKotoV3.InvalidTransfer.selector);
+            vm.expectRevert(IMockKotoV3.InvalidTransfer.selector);
             koto.transferFrom(owner, to, amount);
-        } else if (amount > 8_500_000 ether) {
-            vm.expectRevert(MockKotoV3.InsufficentBalance.selector);
+        } else if (amount > startingSupply) {
+            vm.expectRevert(IMockKotoV3.InsufficentBalance.selector);
             koto.transferFrom(owner, to, amount);
         } else {
             koto.transferFrom(owner, to, amount);
             assertEq(koto.balanceOf(to), amount);
-            assertEq(koto.balanceOf(owner), 8_500_000 ether - amount);
+            assertEq(koto.balanceOf(owner), startingSupply - amount);
         }
     }
 
@@ -93,22 +95,22 @@ contract KotoV3Test is Test {
         address owner = koto.ownership();
         vm.assume(amount > 0.001 ether);
         vm.startPrank(owner);
-        if (amount > 8_500_000 ether) {
-            vm.expectRevert(MockKotoV3.InsufficentBalance.selector);
+        if (amount > startingSupply) {
+            vm.expectRevert(IMockKotoV3.InsufficentBalance.selector);
             koto.redeem(amount);
         } else {
             koto.redeem(amount);
-            assertEq(koto.balanceOf(owner), 8_500_000 ether - amount);
+            assertEq(koto.balanceOf(owner), startingSupply - amount);
         }
-        vm.deal(address(koto), 8_500_000 ether);
+        vm.deal(address(koto), startingSupply);
         if (amount <= koto.balanceOf(owner)) {
-            uint256 expected = FullMath.mulDiv(8_500_000 ether, amount, koto.totalSupply());
+            uint256 expected = FullMath.mulDiv(startingSupply, amount, koto.totalSupply());
             uint256 pre = address(owner).balance;
             koto.redeem(amount);
-            assertEq(koto.balanceOf(owner), 8_500_000 ether - amount * 2);
-            assertEq(koto.totalSupply(), 8_500_000 ether - amount * 2);
+            assertEq(koto.balanceOf(owner), startingSupply - amount * 2);
+            assertEq(koto.totalSupply(), startingSupply - amount * 2);
             assertApproxEqAbs(address(owner).balance, pre + expected, 100_000_000);
-            assertApproxEqAbs(address(koto).balance, 8_500_000 ether - expected, 100_000_000);
+            assertApproxEqAbs(address(koto).balance, startingSupply - expected, 100_000_000);
             // Precision within 0.0000000001 ether. From the test it shows that the precision error
             // is in the benefit of the cotract itself. Meaning that users get approximately  > 0.0000000001 less ether than they might be expecting on large scale redemptions.
             // At the current time of writing this is equal to about .000000208 dollars.
@@ -119,13 +121,13 @@ contract KotoV3Test is Test {
     function testBurn(uint256 amount) public {
         address owner = koto.ownership();
         vm.startPrank(owner);
-        if (amount > 8_500_000 ether) {
-            vm.expectRevert(MockKotoV3.InsufficentBalance.selector);
+        if (amount > startingSupply) {
+            vm.expectRevert(IMockKotoV3.InsufficentBalance.selector);
             koto.burn(amount);
         } else {
             koto.burn(amount);
-            assertEq(koto.totalSupply(), 8_500_000 ether - amount);
-            assertEq(koto.balanceOf(owner), 8_500_000 ether - amount);
+            assertEq(koto.totalSupply(), startingSupply - amount);
+            assertEq(koto.balanceOf(owner), startingSupply - amount);
         }
         vm.stopPrank();
     }
@@ -157,8 +159,8 @@ contract KotoV3Test is Test {
         vm.warp(block.timestamp + 80_000);
         ///@dev now that adjustments have been activiated we do not need to send an additional bond
         assertGt(post, koto.bondPrice());
-        vm.warp(block.timestamp + 100_000);
-        vm.expectRevert(MockKotoV3.MarketClosed.selector);
+        vm.warp(block.timestamp + 700_000);
+        vm.expectRevert(IMockKotoV3.MarketClosed.selector);
         koto.bond{value: 100 ether}();
     }
 
@@ -180,10 +182,10 @@ contract KotoV3Test is Test {
         assertGt(pre, post);
         vm.warp(block.timestamp + 30_000);
         assertGt(post, koto.bondPriceLp());
-        vm.warp(block.timestamp + 100_000);
-        vm.expectRevert(MockKotoV3.MarketClosed.selector);
+        vm.warp(block.timestamp + 700_000);
+        vm.expectRevert(IMockKotoV3.MarketClosed.selector);
         koto.bondLp(100 ether);
-        vm.warp(block.timestamp + 150_000);
+        vm.warp(block.timestamp + 750_000);
         koto.create(0, 10_000 ether);
         assertEq(koto.balanceOf(address(koto)), 10_000 ether);
     }
@@ -203,14 +205,14 @@ contract KotoV3Test is Test {
     }
 
     function testTotalSupply() public {
-        assertEq(koto.totalSupply(), 8_500_000 ether);
+        assertEq(koto.totalSupply(), startingSupply);
     }
 
     function testBalanceOf(address user) public {
         if (user != koto.ownership()) {
             assertEq(koto.balanceOf(user), 0);
         } else {
-            assertEq(koto.balanceOf(user), 8_500_000 ether);
+            assertEq(koto.balanceOf(user), startingSupply);
         }
     }
 
@@ -223,13 +225,13 @@ contract KotoV3Test is Test {
         assertEq(koto.allowance(koto.ownership(), address(this)), 0);
         vm.prank(koto.ownership());
         koto.approve(address(this), amount);
-        if (amount > 8_500_000 ether) {
-            vm.expectRevert(MockKotoV3.InsufficentBalance.selector);
+        if (amount > startingSupply) {
+            vm.expectRevert(IMockKotoV3.InsufficentBalance.selector);
             koto.transferFrom(owner, address(this), amount);
             assertEq(koto.allowance(owner, address(this)), amount);
         } else if (amount > 0) {
             koto.transferFrom(owner, address(this), amount);
-            assertEq(koto.balanceOf(owner), 8_500_000 ether - amount);
+            assertEq(koto.balanceOf(owner), startingSupply - amount);
             assertEq(koto.balanceOf(address(this)), amount);
             assertEq(koto.allowance(owner, address(this)), 0);
         }
@@ -248,7 +250,7 @@ contract KotoV3Test is Test {
     function testAddAmm(address sender, address amm) public {
         vm.startPrank(sender);
         if (sender != koto.ownership() && amm != koto.pool()) {
-            vm.expectRevert(MockKotoV3.OnlyOwner.selector);
+            vm.expectRevert(IMockKotoV3.OnlyOwner.selector);
             koto.addAmm(amm);
             assertEq(koto._amms(amm), false);
         } else {
@@ -262,7 +264,7 @@ contract KotoV3Test is Test {
         address owner = koto.ownership();
         vm.startPrank(sender);
         if (sender != koto.ownership()) {
-            vm.expectRevert(MockKotoV3.OnlyOwner.selector);
+            vm.expectRevert(IMockKotoV3.OnlyOwner.selector);
             koto.exclude(user);
             if (user != owner && user != address(depository) && user != address(koto)) {
                 assertEq(koto._excluded(user), false);
@@ -280,14 +282,16 @@ contract KotoV3Test is Test {
         vm.prank(owner);
         koto.transfer(address(koto), 1_000_000 ether);
         if (sender != owner) {
-            vm.expectRevert(MockKotoV3.OnlyOwner.selector);
+            vm.prank(sender);
+            vm.expectRevert(IMockKotoV3.OnlyOwner.selector);
             koto.launch();
         } else {
             assertEq(koto.balanceOf(address(koto)), 1_000_000 ether);
+            vm.prank(sender);
             koto.launch();
             assertEq(koto.balanceOf(address(koto)), 0);
 
-            vm.expectRevert(MockKotoV3.AlreadyLaunched.selector);
+            vm.expectRevert(IMockKotoV3.AlreadyLaunched.selector);
             koto.launch();
         }
     }
@@ -306,10 +310,10 @@ contract KotoV3Test is Test {
         koto.create(100 ether, 0);
         assertEq(koto.balanceOf(address(koto)), 100 ether);
 
-        vm.expectRevert(MockKotoV3.OngoingBonds.selector);
+        vm.expectRevert(IMockKotoV3.OngoingBonds.selector);
         koto.create(100 ether, 0);
 
-        vm.warp(block.timestamp + 90_000);
+        vm.warp(block.timestamp + 700_000);
         koto.create(100_000 ether, 0);
         assertEq(koto.balanceOf(address(koto)), 100_000 ether);
         vm.stopPrank();

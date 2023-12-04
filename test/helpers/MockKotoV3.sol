@@ -3,7 +3,7 @@
 ///@title Koto ERC20 Token
 ///@author Izanagi Dev
 ///@notice A stripped down ERC20 tax token that implements automated and continious monetary policy decisions.
-///@dev Bonds are the ERC20 token in exchange for Ether. Unsold bonds with automatically carry over to the next day.
+///@dev Bonds are the ERC20 token in exchange for Ether. Unsold bonds with automatically be burned.
 /// The bonding schedule is set to attempt to sell all of the tokens held within the contract in 1 day intervals. Taking a snapshot
 /// of the amount currently held within the contract at the start of the next internal period, using this amount as the capcipty to be sold.
 
@@ -16,8 +16,9 @@ import {PricingLibrary} from "../../src/PricingLibrary.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {FullMath} from "../../src/libraries/FullMath.sol";
 import {IERC20Minimal} from "../../src/interfaces/IERC20Minimal.sol";
+import {IMockKotoV3} from "./IMockKotoV3.sol";
 
-contract MockKotoV3 {
+contract MockKotoV3 is IMockKotoV3 {
     // ========================== STORAGE ========================== \\
 
     mapping(address => uint256) private _balances;
@@ -62,7 +63,7 @@ contract MockKotoV3 {
     address private immutable pair;
     address private immutable token0;
     address private immutable token1;
-    uint256 private constant INTERVAL = 86400; // 1 day in seconds
+    uint256 private constant INTERVAL = 604800; // 7 days in seconds
 
     // ========================== MODIFIERS ========================== \\
 
@@ -75,14 +76,14 @@ contract MockKotoV3 {
 
     // ========================= CONTRUCTOR ========================= \\
 
-    constructor(address depo) {
-        BOND_DEPOSITORY = depo;
+    constructor(address _depo) {
+        BOND_DEPOSITORY = _depo;
         pair = _createUniswapV2Pair(address(this), WETH);
         _excluded[OWNER] = true;
         _excluded[BOND_DEPOSITORY] = true;
         _excluded[address(this)] = true;
         _amms[pair] = true;
-        _mint(OWNER, 8_500_000e18); //
+        _mint(OWNER, IERC20Minimal(0xc75c635c1F5e21D23eC8592Cb37503B82A7EF942).totalSupply());
         (token0, token1) = _getTokens(pair);
         zeroForOne = address(this) == token0 ? true : false;
         _allowances[address(this)][UNISWAP_V2_ROUTER] = type(uint256).max;
@@ -117,7 +118,6 @@ contract MockKotoV3 {
     ///@notice exchange ETH for Koto tokens at the current bonding price
     ///@dev bonds are set on 1 day intervals with 4 hour deposit intervals and 30 minute tune intervals.
     function bond() public payable lock returns (uint256 payout) {
-        // If the previous market has ended create a new market.
         if (block.timestamp > term.conclusion) revert MarketClosed();
         if (market.capacity != 0) {
             // Cache variables for later use to minimize storage calls
@@ -331,6 +331,9 @@ contract MockKotoV3 {
         emit Launched(block.timestamp);
     }
 
+    ///@notice create a new bond market for ETH and LP bonds
+    ///@param ethBondAmount the amount of koto tokens to be sold for ETH bonds during this period
+    ///@param lpBondAmount the amount of koto tokens to be sold for LP bonds during this period.
     function create(uint256 ethBondAmount, uint256 lpBondAmount) external {
         if (msg.sender != OWNER && msg.sender != BOND_DEPOSITORY) revert InvalidSender();
         if (term.conclusion != type(uint48).max) {
@@ -371,6 +374,7 @@ contract MockKotoV3 {
         }
     }
 
+    ///@notice add the initial liquidity of the pool.
     function _addInitialLiquidity() private {
         address depo = BOND_DEPOSITORY;
         uint256 tokenAmount = _balances[address(this)];
@@ -392,14 +396,14 @@ contract MockKotoV3 {
     ///@dev this is done automatically if the previous market conclusion has passed
     /// time check must be done elsewhere as the initial conclusion is set to uint48 max,
     /// tokens must also already be held within the contract or else the call will revert
-    function _create() public {
+    function _create() private {
         // Set the initial price to the current market price
         uint96 targetDebt = uint96(ethCapacityNext);
         if (ethCapacityNext > 0) {
             uint256 initialPrice = _getPrice();
 
             uint96 capacity = targetDebt;
-            uint96 maxPayout = uint96(targetDebt * 14400 / INTERVAL);
+            uint96 maxPayout = uint96(targetDebt * 86400 / INTERVAL);
             uint256 controlVariable = initialPrice * _totalSupply / targetDebt;
             bool policy = _policy(capacity, initialPrice);
             uint48 conclusion = uint48(block.timestamp + INTERVAL);
@@ -408,7 +412,7 @@ contract MockKotoV3 {
                 market = PricingLibrary.Market(capacity, targetDebt, maxPayout, 0, 0);
                 term = PricingLibrary.Term(conclusion, controlVariable);
                 data =
-                    PricingLibrary.Data(uint48(block.timestamp), uint48(block.timestamp), uint48(INTERVAL), 14400, 1800);
+                    PricingLibrary.Data(uint48(block.timestamp), uint48(block.timestamp), uint48(INTERVAL), 86400, 1800);
                 emit CreateMarket(capacity, block.timestamp, conclusion);
             } else {
                 _burn(address(this), capacity);
@@ -421,12 +425,13 @@ contract MockKotoV3 {
         ethCapacityNext = 0;
     }
 
-    function _createLpMarket() public {
+    ///@notice create the next bond market for LP tokens -> koto
+    function _createLpMarket() private {
         uint96 targetDebt = uint96(lpCapacityNext);
         if (targetDebt > 0) {
             uint256 initialPrice = _getLpPrice();
             uint96 capacity = targetDebt;
-            uint96 maxPayout = uint96(targetDebt * 14400 / INTERVAL);
+            uint96 maxPayout = uint96(targetDebt * 86400 / INTERVAL);
             uint256 controlVariable = initialPrice * _totalSupply / targetDebt;
             bool policy = _policy(capacity, initialPrice);
             uint48 conclusion = uint48(block.timestamp + INTERVAL);
@@ -435,7 +440,7 @@ contract MockKotoV3 {
                 lpMarket = PricingLibrary.Market(capacity, targetDebt, maxPayout, 0, 0);
                 lpTerm = PricingLibrary.Term(conclusion, controlVariable);
                 lpData =
-                    PricingLibrary.Data(uint48(block.timestamp), uint48(block.timestamp), uint48(INTERVAL), 14400, 1800);
+                    PricingLibrary.Data(uint48(block.timestamp), uint48(block.timestamp), uint48(INTERVAL), 86400, 1800);
                 emit CreateMarket(capacity, block.timestamp, conclusion);
             } else {
                 _burn(address(this), capacity);
@@ -454,13 +459,14 @@ contract MockKotoV3 {
     ///@return decision the decision reached determining which is more valuable to sell the bonds (true) or to burn them (false)
     ///@dev the decision is made optimistically using the initial price as the selling price for the deicison. If selling the tokens all at the starting
     /// price does not increase relative reserves more than burning the tokens then they are burned. If they are equivilant burning wins out.
-    function _policy(uint256 capacity, uint256 price) public view returns (bool decision) {
+    function _policy(uint256 capacity, uint256 price) private view returns (bool decision) {
         uint256 supply = _totalSupply;
         uint256 burnRelative = (address(this).balance * 1e18) / (supply - capacity);
         uint256 bondRelative = ((address(this).balance * 1e18) + ((capacity * price))) / supply;
         decision = burnRelative >= bondRelative ? false : true;
     }
 
+    ///@notice internal transfer function to handle dealing with taxes
     function _transfer(address from, address to, uint256 _value) private {
         if (_value > _balances[from]) revert InsufficentBalance();
         bool fees;
@@ -507,7 +513,7 @@ contract MockKotoV3 {
     ///@notice burn koto tokens
     ///@param from the user to burn the tokens from
     ///@param value the amount of koto tokens to burn
-    function _burn(address from, uint256 value) public {
+    function _burn(address from, uint256 value) private {
         if (_balances[from] < value) revert InsufficentBalance();
         unchecked {
             _balances[from] -= value;
@@ -520,7 +526,7 @@ contract MockKotoV3 {
     ///@param to the user to send the tokens to
     ///@param value the amount of koto tokens to send
     ///@dev bonds are not subject to taxes
-    function _bond(address to, uint256 value) public returns (bool success) {
+    function _bond(address to, uint256 value) private returns (bool success) {
         if (value > _balances[address(this)]) revert InsufficentBondsAvailable();
         unchecked {
             _balances[to] += value;
@@ -532,7 +538,7 @@ contract MockKotoV3 {
 
     ///@notice calculate the current market price based on the reserves of the Uniswap Pair
     ///@dev price is returned as the amount of ETH you would get back for 1 full (1e18) Koto tokens
-    function _getPrice() public view returns (uint256 price) {
+    function _getPrice() private view returns (uint256 price) {
         address _pair = pair;
         uint112 reserve0;
         uint112 reserve1;
@@ -554,7 +560,8 @@ contract MockKotoV3 {
         }
     }
 
-    function _getLpPrice() public view returns (uint256 _lpPrice) {
+    ///@notice return the current price in koto for 1 LP token
+    function _getLpPrice() private view returns (uint256 _lpPrice) {
         address _pair = pair;
         uint112 reserve0;
         uint112 reserve1;
@@ -580,7 +587,11 @@ contract MockKotoV3 {
         }
     }
 
-    function _getTokens(address _pair) public view returns (address _token0, address _token1) {
+    ///@notice return the tokens for a Uniswap V2 Pair
+    ///@param _pair the address of the pair
+    ///@return _token0 token 0 of the uniswap pair
+    ///@return _token1 token 1 of the uniswap pair
+    function _getTokens(address _pair) private view returns (address _token0, address _token1) {
         assembly {
             let ptr := mload(0x40)
             mstore(ptr, 0x0dfe168100000000000000000000000000000000000000000000000000000000)
@@ -621,37 +632,6 @@ contract MockKotoV3 {
         (uint256 decay,,) = PricingLibrary.controlDecay(info);
         return controlVariable - decay;
     }
-
-    // ========================= EVENTS ========================= \\
-
-    event AmmAdded(address poolAdded);
-    event Approval(address indexed _owner, address indexed _spender, uint256 _value);
-    event Bond(address indexed buyer, uint256 amount, uint256 bondPrice);
-    event CreateMarket(uint256 bonds, uint256 start, uint48 end);
-    event IncreaseLiquidity(uint256 kotoAdded, uint256 ethAdded);
-    event Launched(uint256 time);
-    event LimitsRemoved(uint256 time);
-    event OpenBondMarket(uint256 openingTime);
-    event Redeem(address indexed sender, uint256 burned, uint256 payout, uint256 floorPrice);
-    event Transfer(address indexed _from, address indexed _to, uint256 _value);
-    event UserExcluded(address indexed userToExclude);
-
-    // ========================= ERRORS ========================= \\
-
-    error AlreadyLaunched();
-    error BondFailed();
-    error InsufficentAllowance();
-    error InsufficentBalance();
-    error InsufficentBondsAvailable();
-    error InvalidSender();
-    error InvalidTransfer();
-    error LimitsReached();
-    error MarketClosed();
-    error MaxPayout();
-    error OnlyOwner();
-    error OngoingBonds();
-    error RedeemFailed();
-    error Reentrancy();
 
     receive() external payable {}
 }

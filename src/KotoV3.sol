@@ -117,7 +117,7 @@ contract KotoV3 is IKotoV3 {
     ///@notice exchange ETH for Koto tokens at the current bonding price
     ///@dev bonds are set on 1 day intervals with 4 hour deposit intervals and 30 minute tune intervals.
     function bond() public payable lock returns (uint256 payout) {
-        if (block.timestamp > lpTerm.conclusion) revert MarketClosed();
+        if (block.timestamp > term.conclusion) revert MarketClosed();
         if (market.capacity != 0) {
             // Cache variables for later use to minimize storage calls
             PricingLibrary.Market memory _market = market;
@@ -335,7 +335,9 @@ contract KotoV3 is IKotoV3 {
     ///@param lpBondAmount the amount of koto tokens to be sold for LP bonds during this period.
     function create(uint256 ethBondAmount, uint256 lpBondAmount) external {
         if (msg.sender != OWNER && msg.sender != BOND_DEPOSITORY) revert InvalidSender();
-        if (term.conclusion > block.timestamp) revert OngoingBonds();
+        if (term.conclusion != type(uint48).max) {
+            if (term.conclusion > block.timestamp) revert OngoingBonds();
+        }
         ///@dev clear the current unsold bonds in order to prevent build up of unsold tokens
         /// if this is not done over a longer time period it would effect the redemption rate for users.
         uint256 currentBalance = _balances[address(this)];
@@ -344,6 +346,7 @@ contract KotoV3 is IKotoV3 {
                 _balances[address(this)] -= currentBalance;
                 _totalSupply -= currentBalance;
             }
+            emit Transfer(address(this), address(0), currentBalance);
         }
         uint256 total = ethBondAmount + lpBondAmount;
         transferFrom(msg.sender, address(this), total);
