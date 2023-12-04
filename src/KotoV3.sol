@@ -63,7 +63,7 @@ contract KotoV3 is IKotoV3 {
     address private immutable pair;
     address private immutable token0;
     address private immutable token1;
-    uint256 private constant INTERVAL = 86400; // 1 day in seconds
+    uint256 private constant INTERVAL = 604800; // 7 days in seconds
 
     // ========================== MODIFIERS ========================== \\
 
@@ -399,7 +399,7 @@ contract KotoV3 is IKotoV3 {
             uint256 initialPrice = _getPrice();
 
             uint96 capacity = targetDebt;
-            uint96 maxPayout = uint96(targetDebt * 14400 / INTERVAL);
+            uint96 maxPayout = uint96(targetDebt * 86400 / INTERVAL);
             uint256 controlVariable = initialPrice * _totalSupply / targetDebt;
             bool policy = _policy(capacity, initialPrice);
             uint48 conclusion = uint48(block.timestamp + INTERVAL);
@@ -408,7 +408,7 @@ contract KotoV3 is IKotoV3 {
                 market = PricingLibrary.Market(capacity, targetDebt, maxPayout, 0, 0);
                 term = PricingLibrary.Term(conclusion, controlVariable);
                 data =
-                    PricingLibrary.Data(uint48(block.timestamp), uint48(block.timestamp), uint48(INTERVAL), 14400, 1800);
+                    PricingLibrary.Data(uint48(block.timestamp), uint48(block.timestamp), uint48(INTERVAL), 86400, 1800);
                 emit CreateMarket(capacity, block.timestamp, conclusion);
             } else {
                 _burn(address(this), capacity);
@@ -427,7 +427,7 @@ contract KotoV3 is IKotoV3 {
         if (targetDebt > 0) {
             uint256 initialPrice = _getLpPrice();
             uint96 capacity = targetDebt;
-            uint96 maxPayout = uint96(targetDebt * 14400 / INTERVAL);
+            uint96 maxPayout = uint96(targetDebt * 86400 / INTERVAL);
             uint256 controlVariable = initialPrice * _totalSupply / targetDebt;
             bool policy = _policy(capacity, initialPrice);
             uint48 conclusion = uint48(block.timestamp + INTERVAL);
@@ -436,7 +436,7 @@ contract KotoV3 is IKotoV3 {
                 lpMarket = PricingLibrary.Market(capacity, targetDebt, maxPayout, 0, 0);
                 lpTerm = PricingLibrary.Term(conclusion, controlVariable);
                 lpData =
-                    PricingLibrary.Data(uint48(block.timestamp), uint48(block.timestamp), uint48(INTERVAL), 14400, 1800);
+                    PricingLibrary.Data(uint48(block.timestamp), uint48(block.timestamp), uint48(INTERVAL), 86400, 1800);
                 emit CreateMarket(capacity, block.timestamp, conclusion);
             } else {
                 _burn(address(this), capacity);
