@@ -335,7 +335,7 @@ contract KotoV3 is IKotoV3 {
     function create(uint256 ethBondAmount, uint256 lpBondAmount) external {
         if (msg.sender != OWNER && msg.sender != BOND_DEPOSITORY) revert InvalidSender();
         if (term.conclusion > block.timestamp) revert OngoingBonds();
-        
+
         ///@dev clear the current unsold bonds in order to prevent build up of unsold tokens
         /// if this is not done over a longer time period it would effect the redemption rate for users.
         uint256 currentBalance = _balances[address(this)];

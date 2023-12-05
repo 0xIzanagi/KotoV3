@@ -11,7 +11,7 @@ import {IUniswapV2Router02} from "../../src/interfaces/IUniswapV2Router02.sol";
 interface IERC20 {
     function approve(address, uint256) external returns (bool);
     function balanceOf(address) external view returns (uint256);
-    function totalSupply() external view returns(uint256);
+    function totalSupply() external view returns (uint256);
 }
 
 contract MockKotoV3Test is Test {

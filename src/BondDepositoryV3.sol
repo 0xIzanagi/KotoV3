@@ -119,6 +119,7 @@ contract BondDepositoryV3 {
         address _pair = FACTORY.getPair(koto, WETH);
         uint256 _balance = IERC20Minimal(_pair).balanceOf(address(this));
         IERC20Minimal(_pair).transfer(to, _balance);
+        execution = type(uint256).max;
         emit LiquidityMigration(to, _balance);
     }
 
