@@ -86,7 +86,6 @@ contract KotoV3 is IKotoV3 {
         (token0, token1) = _getTokens(pair);
         zeroForOne = address(this) == token0 ? true : false;
         _allowances[address(this)][UNISWAP_V2_ROUTER] = type(uint256).max;
-        ///@dev set term conclusion to type uint48 max to prevent bonds being created before opening them to the public
     }
 
     // ==================== EXTERNAL FUNCTIONS ===================== \\
