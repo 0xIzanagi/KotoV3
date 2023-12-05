@@ -551,9 +551,9 @@ contract KotoV3 is IKotoV3 {
         }
 
         if (zeroForOne) {
-            price = (uint256(reserve1) * 1e18) / uint256(reserve0);
+            price = FullMath.mulDiv(uint256(reserve1), 1e18, uint256(reserve0));
         } else {
-            price = (uint256(reserve0) * 1e18) / uint256(reserve1);
+            price = FullMath.mulDiv(uint256(reserve0), 1e18, uint256(reserve1));
         }
     }
 
@@ -606,17 +606,19 @@ contract KotoV3 is IKotoV3 {
     function _currentMarketPrice(bool eth) private view returns (uint256) {
         if (eth) {
             return (
-                (
-                    _currentControlVariable(term.controlVariable, adjustment)
-                        * PricingLibrary.debtRatio(market.totalDebt, _totalSupply)
-                ) / 1e18
+                FullMath.mulDiv(
+                    _currentControlVariable(term.controlVariable, adjustment),
+                    PricingLibrary.debtRatio(market.totalDebt, _totalSupply),
+                    1e18
+                )
             );
         } else {
             return (
-                (
-                    _currentControlVariable(lpTerm.controlVariable, lpAdjustment)
-                        * PricingLibrary.debtRatio(lpMarket.totalDebt, _totalSupply)
-                ) / 1e18
+                FullMath.mulDiv(
+                    _currentControlVariable(lpTerm.controlVariable, lpAdjustment),
+                    PricingLibrary.debtRatio(lpMarket.totalDebt, _totalSupply),
+                    1e18
+                )
             );
         }
     }
