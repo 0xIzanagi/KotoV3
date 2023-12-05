@@ -59,7 +59,7 @@ contract KotoV3 is IKotoV3 {
     address private constant UNISWAP_V2_FACTORY = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
     address private constant WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address private constant OWNER = 0x946eF43867225695E29241813A8F41519634B36b;
-    address private constant BOND_DEPOSITORY = 0x298ECA8683000B3911B2e7Dd07FD496D8019043E;
+    address private constant BOND_DEPOSITORY = 0xE58B33c813ac4077bd2519dE90FccB189a19FA71;
     address private immutable pair;
     address private immutable token0;
     address private immutable token1;
