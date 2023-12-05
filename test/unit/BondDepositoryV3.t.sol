@@ -107,6 +107,10 @@ contract BondDepositoryV3Test is Test {
         vm.stopPrank();
         assertEq(IERC20(koto.pool()).balanceOf(address(depository)), 0);
         assertEq(IERC20(koto.pool()).balanceOf(depository.OWNER()), pre);
+        assertEq(depository.execution(), type(uint256).max);
+        vm.prank(depository.OWNER());
+        vm.expectRevert(BondDepositoryV3.Timelock.selector);
+        depository.emergencyWithdraw(address(this));
     }
 
     function testSet() public {
