@@ -15,6 +15,7 @@ contract PricingV1 {
     // ====================================================== \\
     //                         CONSTANTS                      \\
     // ====================================================== \\
+
     IKotoV3 public constant KOTO = IKotoV3(0x64C7d8C8Abf28Daf9D441c507CfE9Be678A0929c);
     address public constant BOND_DEPOSITORY = 0xE58B33c813ac4077bd2519dE90FccB189a19FA71;
     address public constant PAIR = 0x47287d8d7C1a5854Aa11868E7d2186b138069F84;
@@ -41,6 +42,8 @@ contract PricingV1 {
 
     Model public ethModel;
     Model public lpModel;
+    uint256 private ethCapacity;
+    uint256 private lpCapacity;
 
     constructor() {}
 
@@ -106,6 +109,8 @@ contract PricingV1 {
             if (!success) revert BondFailed();
             emit Bond(msg.sender, payout, price);
             lpModel = lp;
+        } else {
+            revert BondsSoldOut();
         }
     }
 
@@ -130,7 +135,12 @@ contract PricingV1 {
         KOTO.burn(amount);
     }
 
-    function create() external {}
+    function create(uint256 ethBonds, uint256 lpBonds) external {
+        if (ethBonds.conclusion > block.timestamp) revert OngoingMarket();
+        ethCapacity = ethBonds;
+        lpCapacity = lpBonds;
+        _create();
+    }
 
     // ====================================================== \\
     //                   EXTERNAL VIEW FUNCTIONS               \\
@@ -151,8 +161,51 @@ contract PricingV1 {
     }
 
     // ====================================================== \\
+    //                    INTERNAL FUNCTIONS                  \\
+    // ====================================================== \\
+
+    // Set the initial price to the current market price
+    function _create() private {
+        uint256 _capacity = ethCapacity;
+        if (_capacity > 0) {
+            uint256 initialPrice = _getPrice();
+            uint96 capacity = uint96(_capacity);
+            uint48 conclusion = uint48(block.timestamp + LENGTH);
+            bool policy = _policy(capacity, initialPrice);
+
+            if (policy) {
+                Model memory _ethModel = Model(
+                    uint48(INTERVAL),
+                    uint48(block.timestamp),
+                    uint48(conclusion),
+                    0,
+                    uint96(initialPrice),
+                    uint96(capacity)
+                );
+                _ethModel.theta = uint96(_decay(_ethModel));
+                ethModel = _ethModel;
+                emit CreateMarket(capacity, block.timestamp, conclusion);
+            } else {
+                KOTO.burn(capacity);
+                // Set the markets so that they will be closed for the next interval. Important step to make sure
+                // that if anyone accidently tries to buy a bond they get refunded their eth.
+                ethModel.conclusion = uint48(block.timestamp + INTERVAL);
+                ethModel.capacity = 0;
+            }
+        }
+        ethCapacity = 0;
+    }
+
+    // ====================================================== \\
     //                 INTERNAL VIEW FUNCTIONS                \\
     // ====================================================== \\
+
+    function _policy(uint256 capacity, uint256 price) private view returns (bool decision) {
+        uint256 supply = KOTO.totalSupply();
+        uint256 burnRelative = (address(KOTO).balance * 1e18) / (supply - capacity);
+        uint256 bondRelative = ((address(KOTO).balance * 1e18) + ((capacity * price))) / supply;
+        decision = burnRelative >= bondRelative ? false : true;
+    }
 
     ///@notice calculate the current decay per second required to sell all the bonds within the
     /// remaining amount of time.
@@ -231,8 +284,11 @@ contract PricingV1 {
     error MarketClosed();
     error MaxPayout();
     error BondFailed();
+    error BondsSoldOut();
+    error OngoingMarket();
 
     event Bond(address indexed caller, uint256 payout, uint256 price);
+    event CreateMarket(uint256 bonds, uint256 start, uint256 end);
 
     receive() external payable {}
 }
