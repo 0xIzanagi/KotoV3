@@ -90,7 +90,6 @@ contract PricingV1 {
             IERC20Minimal(PAIR).transferFrom(msg.sender, BOND_DEPOSITORY, amount);
             // Cache variables for later use to minimize storage calls
             Model memory lp = lpModel;
-
             uint48 time = uint48(block.timestamp);
             uint256 theta = lp.theta * (time - lp.last);
 
@@ -137,9 +136,11 @@ contract PricingV1 {
     function create(uint256 ethBonds, uint256 lpBonds) external {
         if (msg.sender != OWNER) revert OnlyOwner();
         if (ethModel.conclusion > block.timestamp) revert OngoingMarket();
+        if (ethBonds + lpBonds > KOTO.balanceOf(address(this))) revert BondOverflow();
         ethCapacity = ethBonds;
         lpCapacity = lpBonds;
         _create();
+        _createLpMarket();
     }
 
     // ====================================================== \\
@@ -192,8 +193,10 @@ contract PricingV1 {
                 ethModel.conclusion = uint48(block.timestamp + INTERVAL);
                 ethModel.capacity = 0;
             }
+            ethCapacity = 0;
+        } else {
+            ethModel.conclusion = uint48(block.timestamp + LENGTH);
         }
-        ethCapacity = 0;
     }
 
     function _createLpMarket() private {
@@ -209,6 +212,8 @@ contract PricingV1 {
             lpModel = _lpModel;
             emit CreateMarket(capacity, block.timestamp, conclusion);
             lpCapacity = 0;
+        } else {
+            lpModel.conclusion = uint48(block.timestamp + LENGTH);
         }
     }
 
@@ -303,6 +308,7 @@ contract PricingV1 {
     error BondsSoldOut();
     error OngoingMarket();
     error OnlyOwner();
+    error BondOverflow();
 
     event Bond(address indexed caller, uint256 payout, uint256 price);
     event CreateMarket(uint256 bonds, uint256 start, uint256 end);
