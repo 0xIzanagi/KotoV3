@@ -21,6 +21,7 @@ contract PricingV1 {
     address public constant PAIR = 0x47287d8d7C1a5854Aa11868E7d2186b138069F84;
     uint256 public constant INTERVAL = 86400;
     uint256 public constant LENGTH = 604800;
+    address public constant OWNER = 0x946eF43867225695E29241813A8F41519634B36b;
     bool private constant zeroForOne = true;
 
     // ====================================================== \\
@@ -76,6 +77,7 @@ contract PricingV1 {
             if (!success) revert BondFailed();
             emit Bond(msg.sender, payout, price);
             ethModel = eth;
+            SafeTransferLib.safeTransferETH(address(KOTO), msg.value);
         } else {
             //If bonds are not available refund the eth sent to the contract
             SafeTransferLib.safeTransferETH(msg.sender, msg.value);
@@ -136,7 +138,8 @@ contract PricingV1 {
     }
 
     function create(uint256 ethBonds, uint256 lpBonds) external {
-        if (ethBonds.conclusion > block.timestamp) revert OngoingMarket();
+        if (msg.sender != OWNER) revert OnlyOwner();
+        if (ethModel.conclusion > block.timestamp) revert OngoingMarket();
         ethCapacity = ethBonds;
         lpCapacity = lpBonds;
         _create();
@@ -217,7 +220,7 @@ contract PricingV1 {
 
     ///@notice calculate the new market price based off of the previous bond sell.
     function _marketPrice(Model memory model, uint256 sold) private pure returns (uint256) {
-        uint256 price = (model.price * (model.capacity * 1e18 / (model.capacity - sold))) / 1e18;
+        uint256 price = FullMath.mulDiv(model.price, model.capacity, model.capacity - sold);
         return price;
     }
 
@@ -286,6 +289,7 @@ contract PricingV1 {
     error BondFailed();
     error BondsSoldOut();
     error OngoingMarket();
+    error OnlyOwner();
 
     event Bond(address indexed caller, uint256 payout, uint256 price);
     event CreateMarket(uint256 bonds, uint256 start, uint256 end);
