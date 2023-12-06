@@ -126,6 +126,7 @@ contract PricingV1 {
 
     ///@notice burn any unsold bonds
     function burn() external {
+        if (msg.sender != OWNER) revert OnlyOwner();
         uint256 amount;
         if (KOTO.balanceOf(address(this)) - (ethModel.capacity + lpModel.capacity) > 0) {
             amount = KOTO.balanceOf(address(this)) - (ethModel.capacity + lpModel.capacity);
