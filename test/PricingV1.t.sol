@@ -5,12 +5,14 @@ pragma solidity 0.8.23;
 import {KotoV3} from "../src/KotoV3.sol";
 import {BondDepositoryV3} from "../src/BondDepositoryV3.sol";
 import {PricingV1} from "../src/PricingV1.sol";
+import {IUniswapV2Router02} from "../src/interfaces/IUniswapV2Router02.sol";
 import "forge-std/Test.sol";
 
 contract PricingV1Test is Test {
     KotoV3 public koto = KotoV3(payable(0x64C7d8C8Abf28Daf9D441c507CfE9Be678A0929c));
     BondDepositoryV3 public depo = BondDepositoryV3(payable(0xE58B33c813ac4077bd2519dE90FccB189a19FA71));
     PricingV1 public pricing;
+    IUniswapV2Router02 public router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
 
     function setUp() public {
         pricing = new PricingV1();

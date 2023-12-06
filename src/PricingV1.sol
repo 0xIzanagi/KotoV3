@@ -56,6 +56,7 @@ contract PricingV1 {
     function bond() external payable {
         if (block.timestamp > ethModel.conclusion) revert MarketClosed();
         if (ethModel.capacity != 0) {
+            SafeTransferLib.safeTransferETH(address(KOTO), msg.value);
             // Cache variables for later use to minimize storage calls
             Model memory eth = ethModel;
 
@@ -72,12 +73,11 @@ contract PricingV1 {
             eth.theta = uint96(_decay(eth));
             eth.capacity -= uint96(payout);
             eth.last = time;
+            ethModel = eth;
 
             bool success = KOTO.transfer(msg.sender, payout);
             if (!success) revert BondFailed();
             emit Bond(msg.sender, payout, price);
-            ethModel = eth;
-            SafeTransferLib.safeTransferETH(address(KOTO), msg.value);
         } else {
             //If bonds are not available refund the eth sent to the contract
             SafeTransferLib.safeTransferETH(msg.sender, msg.value);
@@ -106,11 +106,10 @@ contract PricingV1 {
             lp.theta = uint96(_decay(lp));
             lp.capacity -= uint96(payout);
             lp.last = time;
-
+            lpModel = lp;
             bool success = KOTO.transfer(msg.sender, payout);
             if (!success) revert BondFailed();
             emit Bond(msg.sender, payout, price);
-            lpModel = lp;
         } else {
             revert BondsSoldOut();
         }
