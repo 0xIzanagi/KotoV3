@@ -62,9 +62,7 @@ contract PricingV1 {
 
             uint48 time = uint48(block.timestamp);
             uint256 theta = eth.theta * (time - eth.last);
-
             uint256 price = eth.price - theta;
-
             uint256 payout = (msg.value * 1e18 / price);
             if (payout > _max(eth)) revert MaxPayout();
 
@@ -196,6 +194,22 @@ contract PricingV1 {
             }
         }
         ethCapacity = 0;
+    }
+
+    function _createLpMarket() private {
+        uint256 _capacity = lpCapacity;
+        if (_capacity > 0) {
+            uint256 initialPrice = _getLpPrice();
+            uint96 capacity = uint96(_capacity);
+            uint48 conclusion = uint48(block.timestamp + LENGTH);
+            Model memory _lpModel = Model(
+                uint48(INTERVAL), uint48(block.timestamp), uint48(conclusion), 0, uint96(initialPrice), uint96(capacity)
+            );
+            _lpModel.theta = uint96(_decay(_lpModel));
+            lpModel = _lpModel;
+            emit CreateMarket(capacity, block.timestamp, conclusion);
+            lpCapacity = 0;
+        }
     }
 
     // ====================================================== \\
