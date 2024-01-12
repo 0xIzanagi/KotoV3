@@ -14,7 +14,7 @@ contract CreateScript is Script {
     function run() public {
         uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
         vm.startBroadcast(deployerPrivateKey);
-        depository.deposit(100_000 ether, 0);
+        depository.deposit(1, 0);
         vm.stopBroadcast();
     }
 }
